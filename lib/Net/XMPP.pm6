@@ -1,5 +1,6 @@
 class Net::XMPP;
 
+use Net::DNS;
 use XML;
 
 has $!socket;
@@ -13,14 +14,22 @@ method new(:$jid!, :$server, :$port = 5222, :$socket) {
 }
 
 submethod BUILD(:$!jid, :$server, :$port, :$!socket){
+    ($!jid-local, $!jid-domain) = $!jid.split("@");
     unless $!socket {
         if $server {
             $!socket = IO::Socket::INET.new(:host($server), :$port);
         } else {
-            die "SRV lookup NYI";
+            my $resolver = Net::DNS.new("8.8.8.8");
+            my @records = $resolver.lookup('SRV', $!jid-domain);
+            if @records {
+                @records = @records.sort(*.priority <=> *.priority);
+                $!socket = IO::Socket::INET.new(:host(@records[0].Str),
+                                                :port(@records[0].port));
+            } else {
+                $!socket = IO::Socket::INET.new(:host($!jid-domain), :$port);
+            }
         }
     }
-    ($!jid-local, $!jid-domain) = $!jid.split("@");
     self!do-negotiation;
 }
 
