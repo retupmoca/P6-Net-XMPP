@@ -1,6 +1,7 @@
 class Net::XMPP;
 
 use Net::DNS;
+use MIME::Base64;
 use XML;
 
 has $!socket;
@@ -9,12 +10,13 @@ has $.jid-local;
 has $.jid-domain;
 has $.jid-resource;
 
-method new(:$jid!, :$server, :$port = 5222, :$socket) {
-    self.bless(:$jid, :$server, :$port, :$socket);
+method new(:$jid!, :$login, :$password, :$server, :$port = 5222, :$socket) {
+    self.bless(:$jid, :$login, :$password, :$server, :$port, :$socket);
 }
 
-submethod BUILD(:$!jid, :$server, :$port, :$!socket){
+submethod BUILD(:$!jid, :$login is copy, :$password, :$server, :$port, :$!socket){
     ($!jid-local, $!jid-domain) = $!jid.split("@");
+    $login = $!jid-local unless $login;
     unless $!socket {
         if $server {
             $!socket = IO::Socket::INET.new(:host($server), :$port);
@@ -30,10 +32,10 @@ submethod BUILD(:$!jid, :$server, :$port, :$!socket){
             }
         }
     }
-    self!do-negotiation;
+    self!do-negotiation($login, $password);
 }
 
-method !do-negotiation {
+method !do-negotiation($login, $password) {
     my $done = False;
     until $done {
         self!start-streams;
@@ -42,21 +44,36 @@ method !do-negotiation {
             die "confused";
         }
 
+        my $action = False;
         for $xml.root.nodes -> $feature {
             if $feature.name eq 'mechanisms' {
-                die "Mechanisms NYI";
-                #...
+                my $success = False;
+                for $feature.nodes {
+                    if .contents.join ~~ /^\s*PLAIN\s*$/ {
+                        my $encoded = MIME::Base64.encode-str("\0$login\0$password");
+                        $!socket.send("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl'"
+                                     ~" mechanism='PLAIN'>{$encoded}</auth>");
+                        my $resp = self!get-stanza;
+                        unless $resp.root.name eq 'success' {
+                            die "Auth failed.";
+                        }
+                        $success = True;
+                    }
+                }
+                die "Can't do any server-supported mechanisms" unless $success;
+                $action = True;
+                last;
             } elsif $feature.name eq 'bind' {
                 die "Bind NYI";
                 #...
                 $done = True;
+                $action = True;
+                last;
             } elsif $feature.nodes[0] && $feature.nodes[0].name eq 'required' {
                 die "Can't do feature '{$feature.name}', yet it is required";
-            } else {
-                # everything left looks optional
-                $done = True;
             }
         }
+        last unless $action;
     }
 }
 
