@@ -1,5 +1,7 @@
 class Net::XMPP;
 
+use Net::XMPP::IQ;
+
 use Net::DNS;
 use MIME::Base64;
 use XML;
@@ -12,6 +14,21 @@ has $.jid-resource;
 
 method new(:$jid!, :$login, :$password, :$server, :$port = 5222, :$socket) {
     self.bless(:$jid, :$login, :$password, :$server, :$port, :$socket);
+}
+
+method get-stanza {
+    my $xml = self!get-raw-stanza;
+    if $xml.root.name eq 'iq' {
+        return Net::XMPP::IQ.new(
+            :id($xml.root.attribs<id>),
+            :type($xml.root.attribs<type>),
+            :body($xml.nodes));
+    }
+}
+
+method send-stanza($stanza) {
+    say ~$stanza;
+    $!socket.send(~$stanza);
 }
 
 submethod BUILD(:$!jid, :$login is copy, :$password, :$server, :$port, :$!socket){
@@ -39,7 +56,7 @@ method !do-negotiation($login, $password) {
     my $done = False;
     until $done {
         self!start-streams;
-        my $xml = self!get-stanza;
+        my $xml = self!get-raw-stanza;
         unless $xml.root.name eq 'stream:features' {
             die "confused";
         }
@@ -53,7 +70,7 @@ method !do-negotiation($login, $password) {
                         my $encoded = MIME::Base64.encode-str("\0$login\0$password");
                         $!socket.send("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl'"
                                      ~" mechanism='PLAIN'>{$encoded}</auth>");
-                        my $resp = self!get-stanza;
+                        my $resp = self!get-raw-stanza;
                         unless $resp.root.name eq 'success' {
                             die "Auth failed.";
                         }
@@ -64,8 +81,19 @@ method !do-negotiation($login, $password) {
                 $action = True;
                 last;
             } elsif $feature.name eq 'bind' {
-                die "Bind NYI";
-                #...
+                self.send-stanza(Net::XMPP::IQ.new(:type('set'),
+                                                   :id(1),
+                                                   :body("<bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>")));
+                my $response = self.get-stanza;
+                if $response ~~ Net::XMPP::IQ
+                   && $response.body[0].name eq 'bind'
+                   && $response.body[0].nodes[0].name eq 'jid' {
+                    $!jid = $response.body[0].nodes[0].contents.join.trim;
+                    ($!jid-local, $!jid-domain, $!jid-resource) = $!jid.split(/\@|\//);
+                } else {
+                    die "Bind failed."
+                }
+
                 $done = True;
                 $action = True;
                 last;
@@ -109,7 +137,7 @@ method !start-streams {
     # check things...
 }
 
-method !get-stanza {
+method !get-raw-stanza {
     my $stanza;
     my $line;
     loop {
