@@ -1,6 +1,8 @@
 class Net::XMPP;
 
 use Net::XMPP::IQ;
+use Net::XMPP::Presence;
+use Net::XMPP::Message;
 
 use Net::DNS;
 use MIME::Base64;
@@ -20,6 +22,22 @@ method get-stanza {
     my $xml = self!get-raw-stanza;
     if $xml.root.name eq 'iq' {
         return Net::XMPP::IQ.new(
+            :from($xml.root.attribs<from>),
+            :to($xml.root.attribs<to>),
+            :id($xml.root.attribs<id>),
+            :type($xml.root.attribs<type>),
+            :body($xml.nodes));
+    } elsif $xml.root.name eq 'message' {
+        return Net::XMPP::Message.new(
+            :from($xml.root.attribs<from>),
+            :to($xml.root.attribs<to>),
+            :id($xml.root.attribs<id>),
+            :type($xml.root.attribs<type>),
+            :body($xml.nodes));
+    } elsif $xml.root.name eq 'presence' {
+        return Net::XMPP::Presence.new(
+            :from($xml.root.attribs<from>),
+            :to($xml.root.attribs<to>),
             :id($xml.root.attribs<id>),
             :type($xml.root.attribs<type>),
             :body($xml.nodes));
