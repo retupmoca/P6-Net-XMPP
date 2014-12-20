@@ -7,5 +7,5 @@ has $.id = '';
 has @.body;
 
 method Str {
-    return "<iq from='$.from' to='$.to' id='$.id' type='$.type'>" ~ (@.body.map({~$_}).join) ~ "</iq>";
+    return "<iq { $.from ?? "from='$.from'" !! '' } { $.to ?? "to='$.to'" !! '' } id='$.id' type='$.type'>" ~ (@.body.map({~$_}).join) ~ "</iq>";
 }
