@@ -143,7 +143,7 @@ method !start-streams {
     }
 
     my $buffer;
-    my $last;
+    my $last = '';
     while $last ne '>' {
         $last = $!socket.recv(1);
         $buffer ~= $last;
