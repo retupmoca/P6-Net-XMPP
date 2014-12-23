@@ -45,7 +45,6 @@ method get-stanza {
 }
 
 method send-stanza($stanza) {
-    say ~$stanza;
     $!socket.send(~$stanza);
 }
 
@@ -149,8 +148,6 @@ method !start-streams {
         $buffer ~= $last;
     }
 
-    say $buffer;
-    
     my $xml = from-xml($buffer ~ "</stream:stream>");
     # check things...
 }
@@ -171,7 +168,6 @@ method !get-raw-stanza {
 
         try {
             my $xml = from-xml($stanza);
-            say $stanza;
             return $xml;
         }
     }
