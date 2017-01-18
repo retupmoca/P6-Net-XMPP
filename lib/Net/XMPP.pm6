@@ -172,3 +172,20 @@ method !get-raw-stanza {
         }
     }
 }
+
+=begin pod
+
+=head1 NAME
+
+Net::XMPP - an XMPP client module
+
+=head1 SYNOPSIS
+
+  use Net::XMPP;
+
+=head1 DESCRIPTION
+
+Currently does the initial connection for you, and then allows you to send and
+receive stanzas.
+
+=end pod

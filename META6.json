@@ -20,7 +20,7 @@
   "test-depends" : [
     "Test::META"
   ],
-  "description" : "XMPP Client",
+  "description" : "an XMPP client module",
   "production" : false,
   "version" : "0.0.1",
   "meta6" : "0",
