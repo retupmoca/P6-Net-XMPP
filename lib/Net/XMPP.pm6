@@ -45,7 +45,7 @@ method get-stanza {
 }
 
 method send-stanza($stanza) {
-    $!socket.send(~$stanza);
+    $!socket.print(~$stanza);
 }
 
 submethod BUILD(:$!jid, :$login is copy, :$password, :$server, :$port, :$!socket){
@@ -85,7 +85,7 @@ method !do-negotiation($login, $password) {
                 for $feature.nodes {
                     if .contents.join ~~ /^\s*PLAIN\s*$/ {
                         my $encoded = MIME::Base64.encode-str("\0$login\0$password");
-                        $!socket.send("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl'"
+                        $!socket.print("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl'"
                                      ~" mechanism='PLAIN'>{$encoded}</auth>");
                         my $resp = self!get-raw-stanza;
                         unless $resp.root.name eq 'success' {
@@ -124,8 +124,8 @@ method !do-negotiation($login, $password) {
 
 method !start-streams {
     # send our stream open
-    $!socket.send("<?xml version='1.0'?>\n");
-    $!socket.send("<stream:stream\n"
+    $!socket.print("<?xml version='1.0'?>\n");
+    $!socket.print("<stream:stream\n"
                  ~" from='$!jid'\n"
                  ~" to='$!jid-domain'\n"
                  ~" version='1.0'\n"
