@@ -14,6 +14,8 @@ has $.jid-local;
 has $.jid-domain;
 has $.jid-resource;
 
+has @.features = [];
+
 method new(:$jid!, :$login, :$password, :$server, :$port = 5222, :$socket) {
     self.bless(:$jid, :$login, :$password, :$server, :$port, :$socket);
 }
@@ -96,7 +98,12 @@ method !bind {
     unless $xml.root.name eq 'stream:features' {
         die "confused";
     }
-    my XML::Node:D $bind = $xml.root.nodes.grep(*.name eq 'bind').first;
+
+    for $xml.nodes { $.features.push: $_ };
+
+    unless $xml.root.nodes.grep(*.name eq 'bind') {
+        die "Server doesn't offer the bind stream:feature"
+    }
     self.send-stanza(Net::XMPP::IQ.new(:type('set'),
                                        :id(1),
                                        :body("<bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>")));
